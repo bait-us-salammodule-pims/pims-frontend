@@ -8,6 +8,9 @@ export default function PurchaseRequests() {
   const [error, setError] = useState(null);
   const [view, setView] = useState('list'); // 'list' | 'create' | 'detail'
   
+  const [selectedPR, setSelectedPR] = useState(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  
   // Data for form
   const [departments, setDepartments] = useState([]);
   const [branches, setBranches] = useState([]);
@@ -117,7 +120,101 @@ export default function PurchaseRequests() {
     }
   };
 
+  const viewPRDetails = async (id) => {
+    try {
+      setLoadingDetails(true);
+      setView('detail');
+      const res = await api.get(`/purchase-requests/${id}`);
+      setSelectedPR(res.data.data);
+    } catch (err) {
+      alert('Failed to fetch PR details');
+      setView('list');
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
+
   if (loading) return <div className="flex justify-center p-8"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>;
+
+  if (view === 'detail') {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <button onClick={() => { setView('list'); setSelectedPR(null); }} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full">
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Purchase Request Details</h2>
+        </div>
+
+        {loadingDetails ? (
+          <div className="flex justify-center p-8"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>
+        ) : selectedPR ? (
+          <div className="bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6 border border-gray-200 dark:border-gray-700">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">PR Number</h3>
+                <p className="mt-1 text-base text-gray-900 dark:text-white">{selectedPR.requestNumber}</p>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Status</h3>
+                <p className="mt-1 text-base text-gray-900 dark:text-white">{selectedPR.status}</p>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Purpose</h3>
+                <p className="mt-1 text-base text-gray-900 dark:text-white">{selectedPR.purpose}</p>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Department</h3>
+                <p className="mt-1 text-base text-gray-900 dark:text-white">{selectedPR.department?.name}</p>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Branch</h3>
+                <p className="mt-1 text-base text-gray-900 dark:text-white">{selectedPR.branch?.name}</p>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Store</h3>
+                <p className="mt-1 text-base text-gray-900 dark:text-white">{selectedPR.store?.name || 'N/A'}</p>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400">Required Date</h3>
+                <p className="mt-1 text-base text-gray-900 dark:text-white">
+                  {selectedPR.requiredDate ? new Date(selectedPR.requiredDate).toLocaleDateString() : 'N/A'}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-8 border-t border-gray-200 dark:border-gray-700 pt-6">
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-4">Items</h3>
+              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-md border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                  <thead className="bg-gray-100 dark:bg-gray-700/50">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Item</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Qty</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Est. Price</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Remarks</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 dark:divide-gray-700 bg-white dark:bg-gray-800">
+                    {selectedPR.items?.map((item, idx) => (
+                      <tr key={idx}>
+                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.item?.name || item.itemId}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.requestedQuantity}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.estimatedUnitPrice || 'N/A'}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{item.remarks || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center text-red-500 py-8">Failed to load PR details.</div>
+        )}
+      </div>
+    );
+  }
 
   if (view === 'create') {
     return (
@@ -273,7 +370,7 @@ export default function PurchaseRequests() {
                     {pr.status === 'DRAFT' && (
                       <button onClick={() => submitPR(pr.id)} className="text-blue-600 hover:text-blue-900">Submit</button>
                     )}
-                    <button className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200">View</button>
+                    <button onClick={() => viewPRDetails(pr.id)} className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200">View</button>
                   </td>
                 </tr>
               ))
