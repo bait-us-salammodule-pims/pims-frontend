@@ -134,6 +134,26 @@ export default function PurchaseRequests() {
     }
   };
 
+  const approvePR = async (id) => {
+    try {
+      await api.patch(`/purchase-requests/${id}/approve`);
+      fetchRequests();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to approve PR');
+    }
+  };
+
+  const rejectPR = async (id) => {
+    const remarks = window.prompt('Enter rejection remarks (optional):');
+    if (remarks === null) return; // cancelled
+    try {
+      await api.patch(`/purchase-requests/${id}/reject`, { remarks });
+      fetchRequests();
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to reject PR');
+    }
+  };
+
   if (loading) return <div className="flex justify-center p-8"><Loader2 className="w-8 h-8 animate-spin text-blue-600" /></div>;
 
   if (view === 'detail') {
@@ -369,6 +389,12 @@ export default function PurchaseRequests() {
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
                     {pr.status === 'DRAFT' && (
                       <button onClick={() => submitPR(pr.id)} className="text-blue-600 hover:text-blue-900">Submit</button>
+                    )}
+                    {pr.status === 'SUBMITTED' && (
+                      <>
+                        <button onClick={() => approvePR(pr.id)} className="text-green-600 hover:text-green-900">Approve</button>
+                        <button onClick={() => rejectPR(pr.id)} className="text-red-600 hover:text-red-900">Reject</button>
+                      </>
                     )}
                     <button onClick={() => viewPRDetails(pr.id)} className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200">View</button>
                   </td>
